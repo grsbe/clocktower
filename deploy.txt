@@ -1,5 +1,5 @@
 === on this machine ===
-
+# 1.
 cd /d C:\Users\grsbe\Desktop\botct_webapp
 
 # 2. build and save the image
@@ -18,13 +18,22 @@ ssh user@grsbe.de
 
 cd /home/user/magnia/botct_webapp
 git pull --ff-only
-docker load -i /home/user/clocktower/dist/clocktower-latest.tar
+docker load -i dist/clocktower-latest.tar
 docker compose up -d --no-build --force-recreate
 
 # check it came up
 docker compose ps
 docker compose logs --tail=20
-curl -s localhost:3000/healthz      # from inside the container network
+
+# check it is actually the image you just pushed, not the one from last time.
+# `docker load` prints "Loaded image: clocktower:latest" -- read that line, and
+# compare the id below against the one printed at the end of the local build.
+docker image inspect clocktower:latest --format '{{.Id}} {{.Created}}'
+
+# and that the container is serving that build's bundle (the hash changes every
+# time the client is rebuilt)
+docker compose exec clocktower wget -qO- localhost:3000/ | grep -o 'index-[^"]*\.js'
+docker compose exec clocktower wget -qO- localhost:3000/healthz
 
 
 === notes ===
@@ -37,9 +46,11 @@ curl -s localhost:3000/healthz      # from inside the container network
   comes from the repo. `--no-build` then makes compose run the loaded image
   instead of rebuilding from the Dockerfile.
  
-- The two paths above are deliberately different: the tar lands in
-  /home/user/botct_webapp/ while the repo lives in /home/user/magnia/botct_webapp/.
-  Point them at the same place if that split was not intentional.
+- The tar travels in the repo, so it arrives with `git pull` at
+  dist/clocktower-latest.tar inside /home/user/magnia/botct_webapp. Load it from
+  there. Loading it by an absolute path left over from the old scp flow is how
+  you end up force-recreating the container onto last week's image and seeing
+  no change at all.
 
 - Nothing is published to the host. docker-compose.yml only declares
   `expose: 3000`, so the reverse proxy reaches the container over the docker
