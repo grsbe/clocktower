@@ -207,11 +207,12 @@ export function registerHandlers(io, socket) {
       return ack?.(fail('vote-in-progress'));
     }
     // One cycle is night -> day -> dusk, all under the same number: night 1,
-    // day 1, dusk 1, night 2. Nightfall closes the cycle, but only once per
-    // cycle, so a storyteller who steps back to dusk and on again does not
-    // skip a day.
+    // day 1, dusk 1, night 2. Only dusk giving way to night closes it, so
+    // jumping straight from day to night leaves the number where it is. The
+    // day flag keeps a storyteller who steps back to dusk and on again from
+    // skipping a day; the +/- buttons cover anything else.
     if (phase === PHASE.DAY) room.cycleOpen = true;
-    if (phase === PHASE.NIGHT && room.cycleOpen) {
+    if (phase === PHASE.NIGHT && room.phase === PHASE.DUSK && room.cycleOpen) {
       room.dayNumber = Math.min(LIMITS.DAY_MAX, room.dayNumber + 1);
       room.cycleOpen = false;
     }

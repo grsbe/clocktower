@@ -19,8 +19,10 @@ that everyone sees at the same instant, and the storyteller's private notes.
   middle. The storyteller switches between night, day and dusk.
 - **The cycle** is counted at the top of the screen. A game opens on night 1 and stays on that
   number through day 1 and dusk 1; nightfall closes the cycle and starts night 2. It only turns
-  over once per cycle, so a storyteller who steps back from night to dusk and on again does not
-  skip a day. Two small buttons beside the number nudge it up or down if it drifts anyway.
+  over when dusk gives way to night, so jumping straight from day to night leaves the number
+  alone, and stepping back from night to dusk and on again does not skip a day. Two small
+  buttons beside the number nudge it up or down if it drifts anyway. Everyone sees the banner;
+  only the storyteller gets the buttons.
 - **Nominations** open at dusk; any living player taps a seat to nominate. The dead may not
   nominate.
 - **Voting**: the storyteller picks a speed — from 1s a seat up to a glacial 15s — and starts
@@ -35,8 +37,9 @@ that everyone sees at the same instant, and the storyteller's private notes.
   players, rounded up — from the moment a nomination is on the floor. Seats already passed by
   the clock hand count as locked, the rest as whatever their hand is doing right now.
 - **Public note**: one shared line of text the storyteller edits and the whole table sees as it
-  is typed, for the things that would otherwise be repeated aloud. It sits under the cycle
-  banner, above the circle, and stays hidden for players while it is empty.
+  is typed, for the things that would otherwise be repeated aloud. It sits below the circle for
+  everyone — an editor for the storyteller, a read-only panel for players, hidden entirely
+  while it is empty.
 - **Ghost votes**: a dead player has one vote left for the rest of the game. Their seat says
   either "dead vote available" or "dead vote spent", and once it is spent they are out of every
   vote that follows — raising a hand is refused, and a hand already up stops counting. The

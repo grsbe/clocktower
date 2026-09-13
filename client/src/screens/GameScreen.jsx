@@ -138,12 +138,6 @@ export default function GameScreen() {
         )}
       </div>
 
-      <PublicNote
-        text={state.publicNote ?? ''}
-        editable={isStoryteller}
-        onSave={(next) => act(C2S.PUBLIC_NOTE_SET, { text: next })}
-      />
-
       <div className="table-wrap">
         <SeatCircle
           seated={seated}
@@ -179,6 +173,12 @@ export default function GameScreen() {
           </button>
         </div>
       )}
+
+      <PublicNote
+        text={state.publicNote ?? ''}
+        editable={isStoryteller}
+        onSave={(next) => act(C2S.PUBLIC_NOTE_SET, { text: next })}
+      />
 
       <NominationBar seated={seated} />
 
@@ -217,7 +217,7 @@ export default function GameScreen() {
  * see, for the things that would otherwise be said twice — who died in the
  * night, which script is in play, whose turn it is to talk.
  */
-function PublicNote({ text, editable, onSave }) {
+function PublicNote({ text, editable = false, onSave }) {
   const [draft, setDraft] = useState(text);
   const pending = useRef(false);
 
