@@ -9,7 +9,17 @@ services:
     environment:
       PORT: 3000
       NODE_ENV: production
+      VIRTUAL_HOST: clocktower.grsbe.de
+      VIRTUAL_PORT: 3000
+      LETSENCRYPT_HOST: clocktower.grsbe.de
+      LETSENCRYPT_EMAIL: jodlmachine@gmail.com
     # Not published to the host: the reverse proxy talks to the container
     # directly over the shared network.
     expose:
       - "3000"
+    networks:
+      - net
+
+networks:
+  net:
+    external: true
