@@ -795,6 +795,50 @@ textarea:focus {
   line-height: 0;
 }
 
+/* ---------- the storyteller's public board ---------- */
+
+.public-note {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.public-note__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.public-note__count {
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.public-note__text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--parchment);
+}
+
+.public-note__input {
+  font: inherit;
+  min-height: 46px;
+  resize: vertical;
+}
+
 /* ---------- bars ---------- */
 
 .confirm-bar,
@@ -874,6 +918,66 @@ textarea:focus {
 .chip--tiny {
   padding: 4px 9px;
   font-size: 0.78rem;
+}
+
+.vote-timer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vote-timer__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.vote-timer__count {
+  font-size: 1.8rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold-bright);
+}
+
+.vote-timer__label {
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.vote-timer__track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.vote-timer__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--gold);
+  transform-origin: left center;
+  transform: scaleX(1);
+}
+
+.vote-timer--urgent .vote-timer__count {
+  color: var(--danger);
+}
+
+.vote-timer--urgent .vote-timer__fill {
+  background: var(--danger);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .vote-timer--urgent .vote-timer__count {
+    animation: timer-pulse 1s ease-in-out infinite;
+  }
+}
+
+@keyframes timer-pulse {
+  50% {
+    opacity: 0.55;
+  }
 }
 
 .hand-button {
@@ -1043,11 +1147,66 @@ textarea:focus {
   color: var(--muted);
 }
 
-.st-panel__history ul {
+.vote-log {
+  list-style: none;
   margin: 0;
-  padding-left: 18px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vote-log__entry {
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.vote-log__head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.vote-log__by,
+.vote-log__time {
+  font-size: 0.8rem;
   color: var(--muted);
-  font-size: 0.88rem;
+}
+
+.vote-log__time {
+  margin-left: auto;
+}
+
+.vote-log__tally {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.vote-log__tally--pass {
+  color: var(--good);
+}
+
+.vote-log__row {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--parchment);
+}
+
+.vote-log__row--no {
+  color: var(--muted);
+}
+
+.vote-log__label {
+  display: inline-block;
+  min-width: 116px;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
 }
 
 /* ---------- phase tints ---------- */

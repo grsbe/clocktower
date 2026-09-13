@@ -42,9 +42,14 @@ export function startVote(io, room, msPerPlayer) {
   nomination.state = NOMINATION_STATE.VOTING;
   nomination.msPerPlayer = msPerPlayer;
   nomination.startAt = Date.now() + LIMITS.VOTE_LEAD_IN_MS;
-  nomination.hands = {};
+  // `hands` is deliberately kept: anyone who raised their hand while the
+  // nomination was still on the floor stays raised, and their vote is locked in
+  // as the clock hand passes them just like a hand raised during the sweep.
   nomination.locked = {};
   nomination.result = null;
+  // Frozen for the storyteller's log: who had already committed before the
+  // clock started turning.
+  nomination.preRaised = nomination.order.filter((id) => nomination.hands[id] === true);
 
   clearVoteTimers(room);
 
@@ -109,7 +114,9 @@ function finishVote(io, room, nomination) {
     id: randomUUID(),
     nominatorId: nomination.nominatorId,
     nomineeId: nomination.nomineeId,
+    order: [...nomination.order],
     locked: { ...nomination.locked },
+    preRaised: [...(nomination.preRaised ?? [])],
     result: nomination.result,
     finishedAt: Date.now(),
   });
@@ -124,11 +131,19 @@ function countYes(nomination) {
   return Object.values(nomination.locked).filter(Boolean).length;
 }
 
-/** True if this voter's window is still open. */
+/**
+ * True if this voter may still put their hand up or take it down.
+ *
+ * While the nomination is merely on the floor every voter may do so, so people
+ * who know their mind (or who are about to lose their phone) can commit early.
+ * Once the vote is running the window closes seat by seat as the hand passes.
+ */
 export function canToggleHand(nomination, playerId) {
-  if (!nomination || nomination.state !== NOMINATION_STATE.VOTING) return false;
-  if (playerId in nomination.locked) return false;
+  if (!nomination) return false;
   const index = nomination.order.indexOf(playerId);
   if (index < 0) return false;
+  if (nomination.state === NOMINATION_STATE.OPEN) return true;
+  if (nomination.state !== NOMINATION_STATE.VOTING) return false;
+  if (playerId in nomination.locked) return false;
   return Date.now() <= toggleDeadline(nomination, index);
 }

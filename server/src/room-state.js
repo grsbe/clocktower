@@ -25,6 +25,7 @@ export function sanitizeRoom(room, viewerId) {
       usedGhostVote: p.usedGhostVote,
     })),
     notes: isStoryteller ? { ...room.notes } : null,
+    publicNote: room.publicNote ?? '',
     nomination: sanitizeNomination(room.nomination, viewerId),
     history: room.history.map(sanitizeHistoryEntry),
     serverTime: Date.now(),
@@ -51,7 +52,9 @@ function sanitizeHistoryEntry(entry) {
     id: entry.id,
     nominatorId: entry.nominatorId,
     nomineeId: entry.nomineeId,
+    order: entry.order,
     locked: entry.locked,
+    preRaised: entry.preRaised,
     result: entry.result,
     finishedAt: entry.finishedAt,
   };

@@ -29,6 +29,7 @@ export const C2S = {
   PLAYER_PROFILE_SET: 'player:profileSet',
   PLAYER_REMOVE: 'player:remove',
   NOTE_SET: 'note:set',
+  PUBLIC_NOTE_SET: 'note:publicSet',
   NOMINATE: 'nomination:create',
   NOMINATION_CANCEL: 'nomination:cancel',
   VOTE_START: 'vote:start',
@@ -50,6 +51,7 @@ export const LIMITS = {
   NAME_MAX: 20,
   AVATAR_MAX_BYTES: 64 * 1024,
   NOTE_MAX: 2000,
+  PUBLIC_NOTE_MAX: 500,
   MAX_PLAYERS: 20,
   MIN_PLAYERS_TO_START: 3,
   // Grace period for a hand toggle that was sent just before the clock hand
@@ -65,8 +67,15 @@ export const LIMITS = {
 };
 
 export const VOTE_SPEEDS = [
+  // 15s a seat is the "super slow" setting: enough time for a table that is
+  // talking over the vote, and comfortable to reach on a phone that has just
+  // woken up.
+  { label: 'Glacial', msPerPlayer: 15000 },
   { label: 'Slow', msPerPlayer: 3000 },
   { label: 'Normal', msPerPlayer: 2000 },
   { label: 'Brisk', msPerPlayer: 1500 },
   { label: 'Fast', msPerPlayer: 1000 },
 ];
+
+/** Pre-selected in the speed picker. */
+export const DEFAULT_VOTE_SPEED = 2000;

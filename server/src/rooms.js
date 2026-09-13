@@ -34,6 +34,8 @@ export function createRoom() {
     storytellerId: null,
     players: [],
     notes: {},
+    // Written by the storyteller, read by the whole table.
+    publicNote: '',
     nomination: null,
     history: [],
     // Not serialised to clients: live socket bookkeeping and vote timers.

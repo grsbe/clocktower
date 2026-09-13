@@ -51,24 +51,64 @@ export default function StorytellerPanel({ seated }) {
       </ul>
 
       {state.history.length > 0 && (
-        <div className="st-panel__history">
-          <h3>Earlier nominations</h3>
-          <ul>
-            {[...state.history].reverse().map((entry) => {
-              const nominee = state.players.find((p) => p.id === entry.nomineeId);
-              const nominator = state.players.find((p) => p.id === entry.nominatorId);
-              return (
-                <li key={entry.id}>
-                  <strong>{nominee?.name ?? '?'}</strong> by {nominator?.name ?? 'storyteller'} —{' '}
-                  {entry.result.yes}/{entry.result.threshold}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+        <VoteLog history={state.history} players={state.players} />
       )}
     </section>
   );
+}
+
+/**
+ * Every finished nomination, newest first, with the two lists the storyteller
+ * actually wants afterwards: who put their hand up and who left it down. Hands
+ * raised before the vote was called are marked, since those were committed
+ * without seeing anybody else's.
+ */
+function VoteLog({ history, players }) {
+  const nameOf = (id) => players.find((p) => p.id === id)?.name ?? 'someone';
+
+  return (
+    <div className="st-panel__history">
+      <h3>Vote log</h3>
+      <ul className="vote-log">
+        {[...history].reverse().map((entry) => {
+          const voters = entry.order ?? Object.keys(entry.locked ?? {});
+          const early = new Set(entry.preRaised ?? []);
+          const raised = voters.filter((id) => entry.locked?.[id]);
+          const down = voters.filter((id) => !entry.locked?.[id]);
+          const passed = entry.result.yes >= entry.result.threshold;
+
+          return (
+            <li key={entry.id} className="vote-log__entry">
+              <div className="vote-log__head">
+                <strong>{nameOf(entry.nomineeId)}</strong>
+                <span className="vote-log__by">
+                  by {entry.nominatorId ? nameOf(entry.nominatorId) : 'storyteller'}
+                </span>
+                <span className={`vote-log__tally${passed ? ' vote-log__tally--pass' : ''}`}>
+                  {entry.result.yes}/{entry.result.threshold}
+                </span>
+                <span className="vote-log__time">{timeOfDay(entry.finishedAt)}</span>
+              </div>
+              <p className="vote-log__row vote-log__row--yes">
+                <span className="vote-log__label">✋ raised ({raised.length})</span>
+                {raised.length
+                  ? raised.map((id) => nameOf(id) + (early.has(id) ? ' (early)' : '')).join(', ')
+                  : '—'}
+              </p>
+              <p className="vote-log__row vote-log__row--no">
+                <span className="vote-log__label">hands down ({down.length})</span>
+                {down.length ? down.map(nameOf).join(', ') : '—'}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function timeOfDay(ts) {
+  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 /** Free-text note under a player, saved a moment after typing stops. */

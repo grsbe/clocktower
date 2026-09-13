@@ -2,19 +2,15 @@
 
 cd /d C:\Users\grsbe\Desktop\botct_webapp
 
-# 1. commit and push the source (the server needs docker-compose.yml from git)
-git add -A
-git commit -m "..."
-git push
-
 # 2. build and save the image
 #    scripts\build-and-export.ps1 does both of these and drops the tar in dist\
 docker compose build
 docker save -o dist\clocktower-latest.tar clocktower:latest
 
-# 3. ship it
-scp dist\clocktower-latest.tar user@grsbe.de:/home/user/clocktower/
-
+# 3 ship it
+git add -A
+git commit -m "..."
+git push
 
 === on the server ===
 
@@ -22,7 +18,7 @@ ssh user@grsbe.de
 
 cd /home/user/magnia/botct_webapp
 git pull --ff-only
-docker load -i /home/user/botct_webapp/clocktower-latest.tar
+docker load -i /home/user/clocktower/dist/clocktower-latest.tar
 docker compose up -d --no-build --force-recreate
 
 # check it came up

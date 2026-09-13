@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
-import { C2S, NOMINATION_STATE, PHASE } from '@shared/events.js';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { C2S, LIMITS, NOMINATION_STATE, PHASE } from '@shared/events.js';
 import { useRoom } from '../store.js';
 import SeatCircle from '../components/SeatCircle.jsx';
 import ClockHand from '../components/ClockHand.jsx';
@@ -30,6 +30,11 @@ export default function GameScreen() {
     ? seated.findIndex((p) => p.id === nomination.nomineeId)
     : -1;
 
+  // Same rule the server applies when it writes the result: half the living
+  // table, rounded up. Shown from the moment a nomination is on the floor so
+  // the room can see what the vote has to clear.
+  const threshold = Math.ceil(seated.filter((p) => p.alive).length / 2);
+
   // A player may nominate at dusk while the floor is free. The storyteller can
   // also raise one on someone's behalf.
   const canNominate =
@@ -58,9 +63,19 @@ export default function GameScreen() {
       return (
         <>
           <span className="centre__big">{countYes(nomination)}</span>
+          <span className="centre__small">of {threshold} needed</span>
           <span className="centre__small">
             {clock.secondsLeft > 0 ? `${clock.secondsLeft}s left` : 'counting…'}
           </span>
+        </>
+      );
+    }
+    if (nomination?.state === NOMINATION_STATE.OPEN) {
+      return (
+        <>
+          <span className="centre__big">0</span>
+          <span className="centre__small">of {threshold} needed</span>
+          <span className="centre__small">no votes yet</span>
         </>
       );
     }
@@ -131,7 +146,13 @@ export default function GameScreen() {
         </div>
       )}
 
-      <NominationBar seated={seated} clock={clock} />
+      <PublicNote
+        text={state.publicNote ?? ''}
+        editable={isStoryteller}
+        onSave={(next) => act(C2S.PUBLIC_NOTE_SET, { text: next })}
+      />
+
+      <NominationBar seated={seated} />
 
       {isStoryteller && (
         <>
@@ -160,6 +181,65 @@ export default function GameScreen() {
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * The storyteller's public board: one shared line of text the whole table can
+ * see, for the things that would otherwise be said twice — who died in the
+ * night, which script is in play, whose turn it is to talk.
+ */
+function PublicNote({ text, editable, onSave }) {
+  const [draft, setDraft] = useState(text);
+  const pending = useRef(false);
+
+  // Adopt what the server has unless we are mid-edit, so a second storyteller
+  // tab (or a reconnect) does not fight the person typing.
+  useEffect(() => {
+    if (!pending.current) setDraft(text);
+  }, [text]);
+
+  useEffect(() => {
+    if (draft === text) {
+      pending.current = false;
+      return undefined;
+    }
+    pending.current = true;
+    const timer = setTimeout(async () => {
+      await onSave(draft);
+      pending.current = false;
+    }, 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, text]);
+
+  if (!editable) {
+    if (!text.trim()) return null;
+    return (
+      <section className="public-note" aria-label="Note from the storyteller">
+        <h2 className="public-note__label">From the storyteller</h2>
+        <p className="public-note__text">{text}</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="public-note public-note--edit">
+      <h2 className="public-note__label">
+        Public note
+        <span className="public-note__count">
+          {draft.length}/{LIMITS.PUBLIC_NOTE_MAX}
+        </span>
+      </h2>
+      <textarea
+        className="public-note__input"
+        value={draft}
+        maxLength={LIMITS.PUBLIC_NOTE_MAX}
+        rows={2}
+        placeholder="Everyone at the table sees this, as you type…"
+        onChange={(e) => setDraft(e.target.value)}
+      />
+    </section>
   );
 }
 

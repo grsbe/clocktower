@@ -258,6 +258,15 @@ export function registerHandlers(io, socket) {
     ack?.(ok());
   });
 
+  socket.on(C2S.PUBLIC_NOTE_SET, ({ text } = {}, ack) => {
+    const { room, error } = requireStoryteller();
+    if (error) return ack?.(fail(error));
+    room.publicNote = String(text ?? '').slice(0, LIMITS.PUBLIC_NOTE_MAX);
+    touchRoom(room);
+    broadcastRoom(io, room);
+    ack?.(ok());
+  });
+
   socket.on(C2S.NOMINATE, ({ nomineeId } = {}, ack) => {
     const { room, player } = context();
     if (!room || !player) return ack?.(fail('not-in-a-room'));
@@ -282,6 +291,7 @@ export function registerHandlers(io, socket) {
       order: buildVoteOrder(room, nomineeId),
       hands: {},
       locked: {},
+      preRaised: [],
       result: null,
     };
     clearVoteTimers(room);
