@@ -13,7 +13,7 @@ docker compose build
 docker save -o dist\clocktower-latest.tar clocktower:latest
 
 # 3. ship it
-scp dist\clocktower-latest.tar user@grsbe.de:/home/user/botct_webapp/
+scp dist\clocktower-latest.tar user@grsbe.de:/home/user/clocktower/
 
 
 === on the server ===
@@ -40,7 +40,7 @@ curl -s localhost:3000/healthz      # from inside the container network
 - git is still needed: the tar carries the built app, but docker-compose.yml
   comes from the repo. `--no-build` then makes compose run the loaded image
   instead of rebuilding from the Dockerfile.
-
+ 
 - The two paths above are deliberately different: the tar lands in
   /home/user/botct_webapp/ while the repo lives in /home/user/magnia/botct_webapp/.
   Point them at the same place if that split was not intentional.

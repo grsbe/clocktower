@@ -1,6 +1,6 @@
 node_modules/
 server/public/
 client/dist/
-dist/
+
 *.log
 .DS_Store
