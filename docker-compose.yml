@@ -1,0 +1,15 @@
+services:
+  clocktower:
+    build: .
+    # Named explicitly so `docker save clocktower:latest` works the same way on
+    # any machine, rather than depending on the compose project directory name.
+    image: clocktower:latest
+    container_name: clocktower
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+    # Not published to the host: the reverse proxy talks to the container
+    # directly over the shared network.
+    expose:
+      - "3000"

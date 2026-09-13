@@ -1,0 +1,50 @@
+=== on this machine ===
+
+cd /d C:\Users\grsbe\Desktop\botct_webapp
+
+# 1. commit and push the source (the server needs docker-compose.yml from git)
+git add -A
+git commit -m "..."
+git push
+
+# 2. build and save the image
+#    scripts\build-and-export.ps1 does both of these and drops the tar in dist\
+docker compose build
+docker save -o dist\clocktower-latest.tar clocktower:latest
+
+# 3. ship it
+scp dist\clocktower-latest.tar user@grsbe.de:/home/user/botct_webapp/
+
+
+=== on the server ===
+
+ssh user@grsbe.de
+
+cd /home/user/magnia/botct_webapp
+git pull --ff-only
+docker load -i /home/user/botct_webapp/clocktower-latest.tar
+docker compose up -d --no-build --force-recreate
+
+# check it came up
+docker compose ps
+docker compose logs --tail=20
+curl -s localhost:3000/healthz      # from inside the container network
+
+
+=== notes ===
+
+- The image name is clocktower:latest, set explicitly in docker-compose.yml.
+  It is NOT clocktower-clocktower:latest -- compose only derives
+  <project>-<service> names when the service has no `image:` key.
+
+- git is still needed: the tar carries the built app, but docker-compose.yml
+  comes from the repo. `--no-build` then makes compose run the loaded image
+  instead of rebuilding from the Dockerfile.
+
+- The two paths above are deliberately different: the tar lands in
+  /home/user/botct_webapp/ while the repo lives in /home/user/magnia/botct_webapp/.
+  Point them at the same place if that split was not intentional.
+
+- Nothing is published to the host. docker-compose.yml only declares
+  `expose: 3000`, so the reverse proxy reaches the container over the docker
+  network.

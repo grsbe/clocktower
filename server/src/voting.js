@@ -1,0 +1,134 @@
+import { randomUUID } from 'node:crypto';
+import { LIMITS, NOMINATION_STATE, S2C } from '../../shared/events.js';
+import { clearVoteTimers, findPlayer, seatedPlayers, touchRoom } from './rooms.js';
+import { broadcastRoom } from './room-state.js';
+
+/**
+ * Voting order: the clock hand starts in the gap between the nominee and the
+ * seat after them, then sweeps clockwise through the seating order, so the
+ * first voter is the seat after the nominee and the nominee themselves votes
+ * last, one circle later.
+ */
+export function buildVoteOrder(room, nomineeId) {
+  const seated = seatedPlayers(room);
+  const seat = seated.findIndex((p) => p.id === nomineeId);
+  if (seat < 0) return [];
+  const n = seated.length;
+  const order = [];
+  for (let i = 1; i <= n; i += 1) order.push(seated[(seat + i) % n].id);
+  return order;
+}
+
+/** Moment the hand reaches the voter at index i (server epoch ms). */
+export function handArrivalAt(nomination, index) {
+  return (
+    nomination.startAt +
+    (index + LIMITS.HAND_START_OFFSET) * nomination.msPerPlayer
+  );
+}
+
+/** How long a full sweep takes, from the starting gap round to the nominee. */
+export function voteDurationMs(voterCount, msPerPlayer) {
+  return (voterCount - 1 + LIMITS.HAND_START_OFFSET) * msPerPlayer;
+}
+
+/** Latest moment a hand toggle from this voter is still honoured. */
+export function toggleDeadline(nomination, index) {
+  return handArrivalAt(nomination, index) + LIMITS.VOTE_GRACE_MS;
+}
+
+export function startVote(io, room, msPerPlayer) {
+  const nomination = room.nomination;
+  nomination.state = NOMINATION_STATE.VOTING;
+  nomination.msPerPlayer = msPerPlayer;
+  nomination.startAt = Date.now() + LIMITS.VOTE_LEAD_IN_MS;
+  nomination.hands = {};
+  nomination.locked = {};
+  nomination.result = null;
+
+  clearVoteTimers(room);
+
+  nomination.order.forEach((playerId, index) => {
+    // The lock is applied one grace period after the hand visually arrives, so
+    // a toggle sent just in time but delivered just late is still counted and
+    // never needs to be retracted afterwards.
+    const timer = setTimeout(() => {
+      lockVoter(io, room, nomination, playerId);
+      if (index === nomination.order.length - 1) finishVote(io, room, nomination);
+    }, Math.max(0, toggleDeadline(nomination, index) - Date.now()));
+    room.voteTimers.push(timer);
+  });
+
+  io.to(room.code).emit(S2C.VOTE_STARTED, {
+    nomineeId: nomination.nomineeId,
+    nominatorId: nomination.nominatorId,
+    startAt: nomination.startAt,
+    msPerPlayer: nomination.msPerPlayer,
+    order: nomination.order,
+    serverTime: Date.now(),
+  });
+  broadcastRoom(io, room);
+}
+
+function lockVoter(io, room, nomination, playerId) {
+  if (room.nomination !== nomination) return;
+  const raised = nomination.hands[playerId] === true;
+  nomination.locked[playerId] = raised;
+
+  // A dead player who actually votes has spent their ghost vote. This is only
+  // recorded, never enforced: they can still vote again later.
+  let ghostVoteSpent = false;
+  const player = findPlayer(room, playerId);
+  if (raised && player && !player.alive && !player.usedGhostVote) {
+    player.usedGhostVote = true;
+    ghostVoteSpent = true;
+  }
+
+  io.to(room.code).emit(S2C.VOTE_LOCKED, {
+    playerId,
+    hand: raised,
+    yes: countYes(nomination),
+  });
+  if (ghostVoteSpent) broadcastRoom(io, room);
+}
+
+function finishVote(io, room, nomination) {
+  if (room.nomination !== nomination) return;
+  nomination.state = NOMINATION_STATE.FINISHED;
+
+  const aliveCount = seatedPlayers(room).filter((p) => p.alive).length;
+  const yes = countYes(nomination);
+  nomination.result = {
+    yes,
+    no: nomination.order.length - yes,
+    aliveCount,
+    threshold: Math.ceil(aliveCount / 2),
+  };
+
+  room.history.push({
+    id: randomUUID(),
+    nominatorId: nomination.nominatorId,
+    nomineeId: nomination.nomineeId,
+    locked: { ...nomination.locked },
+    result: nomination.result,
+    finishedAt: Date.now(),
+  });
+
+  clearVoteTimers(room);
+  touchRoom(room);
+  io.to(room.code).emit(S2C.VOTE_FINISHED, { result: nomination.result });
+  broadcastRoom(io, room);
+}
+
+function countYes(nomination) {
+  return Object.values(nomination.locked).filter(Boolean).length;
+}
+
+/** True if this voter's window is still open. */
+export function canToggleHand(nomination, playerId) {
+  if (!nomination || nomination.state !== NOMINATION_STATE.VOTING) return false;
+  if (playerId in nomination.locked) return false;
+  const index = nomination.order.indexOf(playerId);
+  if (index < 0) return false;
+  return Date.now() <= toggleDeadline(nomination, index);
+}

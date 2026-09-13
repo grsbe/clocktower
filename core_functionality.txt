@@ -1,0 +1,17 @@
+A blood on the clocktower web app!
+
+- join screen, for people to join 
+- join a room via 4 letter code 
+- in the join a room screen people should be able to write their name (and Maybe draw a small Character before joining)
+- when losing Connection, selecting the Name should be the identify the Player to be able to rejoin
+
+- after joining the room you enter a menu room you should be able to drag names around to define a seating order and also drag one Person to the top to make them Storyteller
+- at the Bottom you should be able to start the game
+
+- in the game screen all people should be visualized circular in their seating order
+- the storyteller should be able to switch between night, day and dusk when people are able to nominate others
+- Player should be able to nominate other people at dusk
+- the Story Teller should be able to start the voting after a Nomination with a selected timer
+- the voting starts at the Person after the nominated one. it should be synconous for everyone and be like a clocktower that turns in seating order around. Until the pointer arrives at each Person they are able to raise their Hand or not whether they are for or against the execution of the nominated player
+
+- the Story Teller has a seperate view and notes under each Player for his own convenience
