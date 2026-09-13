@@ -3,11 +3,10 @@ import { S2C } from '../../shared/events.js';
 /**
  * Builds the view of a room for one specific viewer.
  *
- * Two things are deliberately withheld:
- *  - storyteller notes go only to the storyteller;
- *  - pending hands (raised before the clock hand arrives) are private to their
- *    owner, so nobody can copy a vote that has not been reached yet. Only
- *    locked votes, written as the hand passes, are public.
+ * Only the storyteller's private notes are withheld. Hands are visible to the
+ * whole table the moment they go up, the way they would be in a room together;
+ * what the clock hand does is not reveal a vote but freeze it, after which it
+ * can no longer be changed.
  */
 export function sanitizeRoom(room, viewerId) {
   const isStoryteller = viewerId != null && viewerId === room.storytellerId;
@@ -15,6 +14,7 @@ export function sanitizeRoom(room, viewerId) {
   return {
     code: room.code,
     phase: room.phase,
+    dayNumber: room.dayNumber ?? 1,
     storytellerId: room.storytellerId,
     players: room.players.map((p) => ({
       id: p.id,
@@ -22,17 +22,19 @@ export function sanitizeRoom(room, viewerId) {
       avatar: p.avatar,
       connected: p.connected,
       alive: p.alive,
+      causeOfDeath: p.causeOfDeath ?? null,
       usedGhostVote: p.usedGhostVote,
     })),
     notes: isStoryteller ? { ...room.notes } : null,
     publicNote: room.publicNote ?? '',
-    nomination: sanitizeNomination(room.nomination, viewerId),
+    nomination: sanitizeNomination(room.nomination),
     history: room.history.map(sanitizeHistoryEntry),
+    events: (room.events ?? []).map((e) => ({ ...e })),
     serverTime: Date.now(),
   };
 }
 
-function sanitizeNomination(nomination, viewerId) {
+function sanitizeNomination(nomination) {
   if (!nomination) return null;
   return {
     nominatorId: nomination.nominatorId,
@@ -42,14 +44,15 @@ function sanitizeNomination(nomination, viewerId) {
     startAt: nomination.startAt,
     order: nomination.order,
     locked: { ...nomination.locked },
+    hands: { ...nomination.hands },
     result: nomination.result,
-    myHand: viewerId != null ? nomination.hands[viewerId] === true : false,
   };
 }
 
 function sanitizeHistoryEntry(entry) {
   return {
     id: entry.id,
+    day: entry.day,
     nominatorId: entry.nominatorId,
     nomineeId: entry.nomineeId,
     order: entry.order,
@@ -73,6 +76,7 @@ export function roomPreview(room) {
   return {
     code: room.code,
     phase: room.phase,
+    dayNumber: room.dayNumber ?? 1,
     storytellerId: room.storytellerId,
     players: room.players.map((p) => ({
       id: p.id,

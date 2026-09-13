@@ -1,5 +1,7 @@
 import {
   C2S,
+  DEATH,
+  EVENT,
   LIMITS,
   NOMINATION_STATE,
   PHASE,
@@ -11,6 +13,7 @@ import {
   createRoom,
   findPlayer,
   getRoom,
+  logEvent,
   newPlayer,
   normalizeCode,
   seatedPlayers,
@@ -21,6 +24,11 @@ import { buildVoteOrder, canToggleHand, startVote } from './voting.js';
 
 const ok = (data = {}) => ({ ok: true, ...data });
 const fail = (error) => ({ ok: false, error });
+
+/** A dead player has exactly one vote left, and only until they spend it. */
+export function canVote(player) {
+  return Boolean(player) && (player.alive || !player.usedGhostVote);
+}
 
 function cleanName(raw) {
   const name = String(raw ?? '').trim().replace(/\s+/g, ' ');
@@ -36,6 +44,14 @@ function cleanAvatar(raw) {
 }
 
 export function registerHandlers(io, socket) {
+  // Whoever can no longer vote should not be shown with their hand up.
+  const dropUncountableHand = (room, player) => {
+    if (canVote(player) || !room.nomination) return;
+    if (room.nomination.hands[player.id] !== true) return;
+    room.nomination.hands[player.id] = false;
+    io.to(room.code).emit(S2C.HAND_CHANGED, { playerId: player.id, hand: false });
+  };
+
   const context = () => {
     const room = socket.data.roomCode ? getRoom(socket.data.roomCode) : null;
     const player = room ? findPlayer(room, socket.data.playerId) : null;
@@ -190,9 +206,32 @@ export function registerHandlers(io, socket) {
     if (room.nomination?.state === NOMINATION_STATE.VOTING) {
       return ack?.(fail('vote-in-progress'));
     }
+    // One cycle is night -> day -> dusk, all under the same number: night 1,
+    // day 1, dusk 1, night 2. Nightfall closes the cycle, but only once per
+    // cycle, so a storyteller who steps back to dusk and on again does not
+    // skip a day.
+    if (phase === PHASE.DAY) room.cycleOpen = true;
+    if (phase === PHASE.NIGHT && room.cycleOpen) {
+      room.dayNumber = Math.min(LIMITS.DAY_MAX, room.dayNumber + 1);
+      room.cycleOpen = false;
+    }
     room.phase = phase;
     room.nomination = null;
     clearVoteTimers(room);
+    touchRoom(room);
+    broadcastRoom(io, room);
+    ack?.(ok());
+  });
+
+  // The counter follows the phases on its own; this is the storyteller's way
+  // out when it has drifted from where the game actually is.
+  socket.on(C2S.DAY_SET, ({ day } = {}, ack) => {
+    const { room, error } = requireStoryteller();
+    if (error) return ack?.(fail(error));
+    if (!Number.isInteger(day) || day < LIMITS.DAY_MIN || day > LIMITS.DAY_MAX) {
+      return ack?.(fail('bad-day'));
+    }
+    room.dayNumber = day;
     touchRoom(room);
     broadcastRoom(io, room);
     ack?.(ok());
@@ -203,7 +242,33 @@ export function registerHandlers(io, socket) {
     if (error) return ack?.(fail(error));
     const target = findPlayer(room, playerId);
     if (!target) return ack?.(fail('no-such-player'));
-    target.alive = Boolean(alive);
+
+    const next = Boolean(alive);
+    if (next !== target.alive) {
+      target.alive = next;
+      target.causeOfDeath = next ? null : DEATH.KILLED;
+      logEvent(room, next ? EVENT.REVIVAL : EVENT.DEATH, target.id);
+    }
+    dropUncountableHand(room, target);
+    touchRoom(room);
+    broadcastRoom(io, room);
+    ack?.(ok());
+  });
+
+  socket.on(C2S.PLAYER_EXECUTE, ({ playerId } = {}, ack) => {
+    const { room, error } = requireStoryteller();
+    if (error) return ack?.(fail(error));
+    const target = findPlayer(room, playerId);
+    if (!target) return ack?.(fail('no-such-player'));
+    if (target.id === room.storytellerId) return ack?.(fail('storyteller-not-seated'));
+    if (target.causeOfDeath === DEATH.EXECUTED) return ack?.(fail('already-executed'));
+
+    // An execution is a death the town chose, and it is logged as such even if
+    // the player was already dead when the axe fell.
+    target.alive = false;
+    target.causeOfDeath = DEATH.EXECUTED;
+    logEvent(room, EVENT.EXECUTION, target.id);
+    dropUncountableHand(room, target);
     touchRoom(room);
     broadcastRoom(io, room);
     ack?.(ok());
@@ -215,6 +280,7 @@ export function registerHandlers(io, socket) {
     const target = findPlayer(room, playerId);
     if (!target) return ack?.(fail('no-such-player'));
     target.usedGhostVote = Boolean(used);
+    dropUncountableHand(room, target);
     touchRoom(room);
     broadcastRoom(io, room);
     ack?.(ok());
@@ -277,6 +343,9 @@ export function registerHandlers(io, socket) {
     const nominee = findPlayer(room, nomineeId);
     if (!nominee) return ack?.(fail('no-such-player'));
     if (nomineeId === room.storytellerId) return ack?.(fail('cannot-nominate-storyteller'));
+    if (player.id !== room.storytellerId && !player.alive) {
+      return ack?.(fail('dead-cannot-nominate'));
+    }
 
     // The storyteller may raise a nomination on someone's behalf; otherwise a
     // player nominates as themselves.
@@ -331,11 +400,12 @@ export function registerHandlers(io, socket) {
   socket.on(C2S.VOTE_HAND, ({ value } = {}, ack) => {
     const { room, player } = context();
     if (!room || !player) return ack?.(fail('not-in-a-room'));
+    if (!canVote(player)) return ack?.(fail('ghost-vote-spent'));
     if (!canToggleHand(room.nomination, player.id)) return ack?.(fail('too-late'));
     room.nomination.hands[player.id] = Boolean(value);
-    // Only this player learns their own pending hand; nobody else sees it until
-    // the clock hand reaches them.
-    socket.emit(S2C.ROOM_STATE, sanitizeRoom(room, player.id));
+    // The whole table watches hands go up and down; a small event rather than a
+    // full room state, since this fires on every tap.
+    io.to(room.code).emit(S2C.HAND_CHANGED, { playerId: player.id, hand: Boolean(value) });
     ack?.(ok({ value: Boolean(value) }));
   });
 

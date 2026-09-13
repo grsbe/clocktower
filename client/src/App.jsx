@@ -97,6 +97,19 @@ export default function App() {
           : prev,
       );
     };
+    const onHandChanged = ({ playerId, hand }) => {
+      setState((prev) =>
+        prev?.nomination
+          ? {
+              ...prev,
+              nomination: {
+                ...prev.nomination,
+                hands: { ...prev.nomination.hands, [playerId]: hand },
+              },
+            }
+          : prev,
+      );
+    };
     const onVoteLocked = ({ playerId, hand }) => {
       setState((prev) =>
         prev?.nomination
@@ -123,6 +136,7 @@ export default function App() {
     socket.on(S2C.ROOM_STATE, onRoomState);
     socket.on(S2C.ROOM_CLOSED, onRoomClosed);
     socket.on(S2C.VOTE_STARTED, onVoteStarted);
+    socket.on(S2C.HAND_CHANGED, onHandChanged);
     socket.on(S2C.VOTE_LOCKED, onVoteLocked);
     socket.on(S2C.VOTE_FINISHED, onVoteFinished);
     if (socket.connected) bootstrap();
@@ -134,6 +148,7 @@ export default function App() {
       socket.off(S2C.ROOM_STATE, onRoomState);
       socket.off(S2C.ROOM_CLOSED, onRoomClosed);
       socket.off(S2C.VOTE_STARTED, onVoteStarted);
+      socket.off(S2C.HAND_CHANGED, onHandChanged);
       socket.off(S2C.VOTE_LOCKED, onVoteLocked);
       socket.off(S2C.VOTE_FINISHED, onVoteFinished);
     };

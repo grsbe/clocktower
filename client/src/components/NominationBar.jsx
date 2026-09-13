@@ -33,10 +33,11 @@ export default function NominationBar({ seated }) {
   const [speed, setSpeed] = useState(DEFAULT_VOTE_SPEED);
   const [hand, setHand] = useState(false);
 
-  // Follow the server's idea of our pending hand (it resets between votes).
+  // Follow the server's idea of our own hand (it resets between votes).
+  const serverHand = me ? nomination?.hands?.[me.id] === true : false;
   useEffect(() => {
-    setHand(Boolean(nomination?.myHand));
-  }, [nomination?.myHand, nomination?.startAt]);
+    setHand(serverHand);
+  }, [serverHand, nomination?.startAt]);
 
   if (!nomination || nomination.state === NOMINATION_STATE.FINISHED) {
     return (
@@ -56,8 +57,11 @@ export default function NominationBar({ seated }) {
     nominee?.name ?? 'someone'
   }`;
 
+  // A dead player has one vote for the whole game; once it is spent they are
+  // out of every vote that follows.
+  const spentMyDeadVote = Boolean(me && !me.alive && me.usedGhostVote);
   const myIndex = me ? nomination.order.indexOf(me.id) : -1;
-  const iAmAVoter = myIndex >= 0;
+  const iAmAVoter = myIndex >= 0 && !spentMyDeadVote;
 
   const toggleHand = async () => {
     const next = !hand;
@@ -134,7 +138,11 @@ export default function NominationBar({ seated }) {
       <p className="nomination-bar__headline">{headline}</p>
       {!iAmAVoter ? (
         <p className="nomination-bar__hint">
-          {isStoryteller ? 'The town is voting.' : 'You are not in this vote.'}
+          {isStoryteller
+            ? 'The town is voting.'
+            : spentMyDeadVote
+              ? 'Your dead vote is spent, so you sit this one out.'
+              : 'You are not in this vote.'}
         </p>
       ) : iAmLocked ? (
         <p className="nomination-bar__hint">
@@ -223,7 +231,7 @@ function GhostNote({ me }) {
   return (
     <p className="nomination-bar__ghost">
       {me.usedGhostVote
-        ? 'You have already spent your ghost vote.'
+        ? 'Your dead vote is spent — you cannot vote again.'
         : 'Dead: you have one vote left for the rest of the game.'}
     </p>
   );

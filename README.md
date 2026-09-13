@@ -17,24 +17,37 @@ that everyone sees at the same instant, and the storyteller's private notes.
   the game.
 - **Table**: everyone drawn in seating order around a circle, with the current phase in the
   middle. The storyteller switches between night, day and dusk.
-- **Nominations** open at dusk; any player taps a seat to nominate.
+- **The cycle** is counted at the top of the screen. A game opens on night 1 and stays on that
+  number through day 1 and dusk 1; nightfall closes the cycle and starts night 2. It only turns
+  over once per cycle, so a storyteller who steps back from night to dusk and on again does not
+  skip a day. Two small buttons beside the number nudge it up or down if it drifts anyway.
+- **Nominations** open at dusk; any living player taps a seat to nominate. The dead may not
+  nominate.
 - **Voting**: the storyteller picks a speed — from 1s a seat up to a glacial 15s — and starts
   the vote. A clock hand sweeps from the nominee around the circle. You can raise or lower your
   hand from the moment the nomination is made until the hand reaches you, at which point your
-  vote locks and becomes visible to everyone. Pending hands are private, so nobody can simply
-  copy the votes ahead of them, and a hand raised early is counted even if you put the phone
-  down. Once the vote is running each player gets their own countdown to the second their seat
-  locks, so nobody has to judge it from the sweeping hand alone.
-- **The middle of the table** shows the running vote count against the threshold — half the
-  living players, rounded up — from the moment a nomination is on the floor, not just once the
-  vote is over.
+  vote locks. Hands are visible to the whole table as they go up, the way they would be in a
+  room together; a raised hand is drawn as an outline until the clock hand freezes it, and a
+  hand raised early counts even if you put the phone down. Once the vote is running each player
+  gets their own countdown to the second their seat locks, so nobody has to judge it from the
+  sweeping hand alone.
+- **The middle of the table** shows the live vote count against the threshold — half the living
+  players, rounded up — from the moment a nomination is on the floor. Seats already passed by
+  the clock hand count as locked, the rest as whatever their hand is doing right now.
 - **Public note**: one shared line of text the storyteller edits and the whole table sees as it
-  is typed, for the things that would otherwise be repeated aloud.
-- **Ghost votes**: a dead player has one vote left for the rest of the game. Spending it marks
-  their token, but the app never blocks them from voting again — the storyteller decides.
-- **Storyteller view**: private notes under every player, alive/dead toggles, ghost-vote
-  markers and a vote log naming, for every finished nomination, who raised their hand and who
-  did not. Notes are filtered out server-side and never reach a player's browser.
+  is typed, for the things that would otherwise be repeated aloud. It sits under the cycle
+  banner, above the circle, and stays hidden for players while it is empty.
+- **Ghost votes**: a dead player has one vote left for the rest of the game. Their seat says
+  either "dead vote available" or "dead vote spent", and once it is spent they are out of every
+  vote that follows — raising a hand is refused, and a hand already up stops counting. The
+  storyteller can hand the vote back from the grimoire if they want to.
+- **Dying**: the storyteller can *kill* a player or *execute* them. Both take them out of the
+  game; the difference is what the table sees — a killed seat is labelled "dead", an executed
+  one "executed" — and that an execution is written into the log as the town's doing.
+- **Storyteller view**: private notes under every player, kill/execute/revive controls,
+  ghost-vote markers, and a day log. The log is grouped by cycle and reads in order within each
+  day: deaths, executions, revivals, and every finished nomination with who raised their hand
+  and who did not. Notes are filtered out server-side and never reach a player's browser.
 
 ## Running it
 
@@ -106,7 +119,7 @@ shared/events.js   socket event names and limits, imported by both sides
 server/src/
   index.js             express static hosting + socket.io on one HTTP server
   rooms.js             in-memory room store, code generation, inactivity sweep
-  room-state.js        per-viewer sanitising (this is what hides private notes and pending hands)
+  room-state.js        per-viewer sanitising (this is what hides the storyteller's notes)
   voting.js            the vote clock: order, per-seat lock timers, ghost votes
   socket-handlers.js   every event, with its permission and phase checks
 client/src/

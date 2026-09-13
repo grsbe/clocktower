@@ -77,14 +77,18 @@ export function startVote(io, room, msPerPlayer) {
 
 function lockVoter(io, room, nomination, playerId) {
   if (room.nomination !== nomination) return;
-  const raised = nomination.hands[playerId] === true;
+  const player = findPlayer(room, playerId);
+  // The last word on whether this counts. The same rule is checked when the
+  // hand goes up, but the storyteller may have killed this player, or marked
+  // their vote spent, in the seconds since.
+  const allowed = !player || player.alive || !player.usedGhostVote;
+  const raised = allowed && nomination.hands[playerId] === true;
   nomination.locked[playerId] = raised;
 
-  // A dead player who actually votes has spent their ghost vote. This is only
-  // recorded, never enforced: they can still vote again later.
+  // A dead player who actually votes has now spent their one vote, and the
+  // check above will refuse them from here on.
   let ghostVoteSpent = false;
-  const player = findPlayer(room, playerId);
-  if (raised && player && !player.alive && !player.usedGhostVote) {
+  if (raised && player && !player.alive) {
     player.usedGhostVote = true;
     ghostVoteSpent = true;
   }
@@ -112,6 +116,7 @@ function finishVote(io, room, nomination) {
 
   room.history.push({
     id: randomUUID(),
+    day: room.dayNumber ?? 1,
     nominatorId: nomination.nominatorId,
     nomineeId: nomination.nomineeId,
     order: [...nomination.order],

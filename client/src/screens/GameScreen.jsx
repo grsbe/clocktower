@@ -23,6 +23,7 @@ export default function GameScreen() {
     [state.players, state.storytellerId],
   );
   const storyteller = state.players.find((p) => p.id === state.storytellerId) ?? null;
+  const day = state.dayNumber ?? LIMITS.DAY_MIN;
   const nomination = state.nomination;
   const voting = nomination?.state === NOMINATION_STATE.VOTING;
 
@@ -39,6 +40,7 @@ export default function GameScreen() {
   // also raise one on someone's behalf.
   const canNominate =
     state.phase === PHASE.DUSK &&
+    Boolean(me?.alive) &&
     (!nomination || nomination.state === NOMINATION_STATE.FINISHED);
   const selectableIds = canNominate ? seated.map((p) => p.id) : null;
 
@@ -62,7 +64,7 @@ export default function GameScreen() {
       }
       return (
         <>
-          <span className="centre__big">{countYes(nomination)}</span>
+          <span className="centre__big">{countVotes(nomination)}</span>
           <span className="centre__small">of {threshold} needed</span>
           <span className="centre__small">
             {clock.secondsLeft > 0 ? `${clock.secondsLeft}s left` : 'counting…'}
@@ -73,9 +75,9 @@ export default function GameScreen() {
     if (nomination?.state === NOMINATION_STATE.OPEN) {
       return (
         <>
-          <span className="centre__big">0</span>
+          <span className="centre__big">{countVotes(nomination)}</span>
           <span className="centre__small">of {threshold} needed</span>
-          <span className="centre__small">no votes yet</span>
+          <span className="centre__small">hands up</span>
         </>
       );
     }
@@ -101,7 +103,6 @@ export default function GameScreen() {
     <div className={`screen screen--game phase-${state.phase}`}>
       <header className="game__header">
         <span className="game__code">{state.code}</span>
-        <span className="game__phase">{PHASE_LABEL[state.phase] ?? state.phase}</span>
         <span className="game__st">
           {storyteller ? `ST: ${storyteller.name}` : 'no storyteller'}
         </span>
@@ -109,6 +110,39 @@ export default function GameScreen() {
           Leave
         </button>
       </header>
+
+      <div className="cycle">
+        <h1 className="cycle__label">
+          <span className="cycle__phase">{PHASE_LABEL[state.phase] ?? state.phase}</span>
+          <span className="cycle__number">{day}</span>
+        </h1>
+        {isStoryteller && (
+          <div className="cycle__nudge" role="group" aria-label="Correct the day number">
+            <button
+              type="button"
+              onClick={() => act(C2S.DAY_SET, { day: day - 1 })}
+              disabled={day <= LIMITS.DAY_MIN}
+              aria-label="One day back"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              onClick={() => act(C2S.DAY_SET, { day: day + 1 })}
+              disabled={day >= LIMITS.DAY_MAX}
+              aria-label="One day on"
+            >
+              +
+            </button>
+          </div>
+        )}
+      </div>
+
+      <PublicNote
+        text={state.publicNote ?? ''}
+        editable={isStoryteller}
+        onSave={(next) => act(C2S.PUBLIC_NOTE_SET, { text: next })}
+      />
 
       <div className="table-wrap">
         <SeatCircle
@@ -145,12 +179,6 @@ export default function GameScreen() {
           </button>
         </div>
       )}
-
-      <PublicNote
-        text={state.publicNote ?? ''}
-        editable={isStoryteller}
-        onSave={(next) => act(C2S.PUBLIC_NOTE_SET, { text: next })}
-      />
 
       <NominationBar seated={seated} />
 
@@ -243,6 +271,13 @@ function PublicNote({ text, editable, onSave }) {
   );
 }
 
-function countYes(nomination) {
-  return Object.values(nomination?.locked ?? {}).filter(Boolean).length;
+/**
+ * What the table looks like right now: a locked seat counts as whatever was
+ * frozen for it, everyone else as whatever their hand is doing this second.
+ * Once every seat is locked this is simply the result.
+ */
+function countVotes(nomination) {
+  if (!nomination) return 0;
+  const { order = [], locked = {}, hands = {} } = nomination;
+  return order.filter((id) => (id in locked ? locked[id] : hands[id] === true)).length;
 }

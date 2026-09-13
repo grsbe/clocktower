@@ -1,3 +1,4 @@
+import { DEATH } from '@shared/events.js';
 import Avatar from './Avatar.jsx';
 
 const RADIUS_PERCENT = 39;
@@ -28,6 +29,9 @@ export default function SeatCircle({
 
         const orderIndex = voteOrder.indexOf(player.id);
         const locked = nomination?.locked?.[player.id];
+        // A hand that is up but not yet reached: shown to everyone, but drawn
+        // faintly, because it can still come down before it counts.
+        const pending = locked === undefined && nomination?.hands?.[player.id] === true;
         const isNominee = nomination?.nomineeId === player.id;
         const isNominator = nomination?.nominatorId === player.id;
         const selectable = selectableIds ? selectableIds.includes(player.id) : false;
@@ -44,6 +48,7 @@ export default function SeatCircle({
           selectable && 'seat--selectable',
           locked === true && 'seat--yes',
           locked === false && 'seat--no',
+          pending && 'seat--pending',
         ]
           .filter(Boolean)
           .join(' ');
@@ -57,16 +62,30 @@ export default function SeatCircle({
             disabled={!selectable}
             onClick={() => selectable && onSeatClick?.(player)}
           >
+            {!player.alive && (
+              <span className="seat__dead">
+                {player.causeOfDeath === DEATH.EXECUTED ? 'executed' : 'dead'}
+              </span>
+            )}
             <span className="seat__token">
               <Avatar player={player} size={54} />
               {!player.alive && <span className="seat__shroud" aria-hidden="true" />}
               {locked === true && <span className="seat__vote seat__vote--yes">✋</span>}
               {locked === false && <span className="seat__vote seat__vote--no">·</span>}
+              {pending && (
+                <span className="seat__vote seat__vote--pending" title="Hand up, not locked yet">
+                  ✋
+                </span>
+              )}
             </span>
             <span className="seat__name">{player.name}</span>
-            {!player.alive && player.usedGhostVote && (
-              <span className="seat__ghost" title="Ghost vote spent">
-                vote spent
+            {!player.alive && (
+              <span
+                className={`seat__ghost${
+                  player.usedGhostVote ? ' seat__ghost--spent' : ' seat__ghost--available'
+                }`}
+              >
+                {player.usedGhostVote ? 'dead vote spent' : 'dead vote available'}
               </span>
             )}
           </button>

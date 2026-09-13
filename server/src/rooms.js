@@ -31,6 +31,13 @@ export function createRoom() {
     createdAt: Date.now(),
     lastActivity: Date.now(),
     phase: PHASE.LOBBY,
+    // The game opens on night one and stays there through day one and dusk
+    // one; nightfall is what starts the next cycle.
+    dayNumber: 1,
+    // True once day has broken and the cycle has not yet been closed by
+    // nightfall, so stepping back from night to dusk and forward again is a
+    // correction rather than another day.
+    cycleOpen: false,
     storytellerId: null,
     players: [],
     notes: {},
@@ -38,6 +45,8 @@ export function createRoom() {
     publicNote: '',
     nomination: null,
     history: [],
+    // Deaths, executions and revivals, in the order they happened.
+    events: [],
     // Not serialised to clients: live socket bookkeeping and vote timers.
     sockets: new Map(),
     voteTimers: [],
@@ -74,8 +83,22 @@ export function newPlayer({ name, avatar }) {
     avatar: avatar || null,
     connected: false,
     alive: true,
+    causeOfDeath: null,
     usedGhostVote: false,
   };
+}
+
+/** Records something worth remembering against the day it happened on. */
+export function logEvent(room, type, playerId) {
+  room.events.push({
+    id: randomUUID(),
+    day: room.dayNumber ?? LIMITS.DAY_MIN,
+    // Kept so the log can tell a quiet night death from one in broad daylight.
+    phase: room.phase,
+    type,
+    playerId,
+    at: Date.now(),
+  });
 }
 
 export function findPlayer(room, playerId) {

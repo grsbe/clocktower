@@ -7,6 +7,19 @@ export const PHASE = {
   DUSK: 'dusk',
 };
 
+// How a player left the game. A quiet death in the night reads differently at
+// the table from an execution the town voted for, so they are tracked apart.
+export const DEATH = {
+  KILLED: 'killed',
+  EXECUTED: 'executed',
+};
+
+export const EVENT = {
+  DEATH: 'death',
+  EXECUTION: 'execution',
+  REVIVAL: 'revival',
+};
+
 export const NOMINATION_STATE = {
   OPEN: 'open',
   VOTING: 'voting',
@@ -24,7 +37,9 @@ export const C2S = {
   STORYTELLER_SET: 'storyteller:set',
   GAME_START: 'game:start',
   PHASE_SET: 'phase:set',
+  DAY_SET: 'day:set',
   PLAYER_ALIVE_SET: 'player:aliveSet',
+  PLAYER_EXECUTE: 'player:execute',
   PLAYER_GHOSTVOTE_SET: 'player:ghostVoteSet',
   PLAYER_PROFILE_SET: 'player:profileSet',
   PLAYER_REMOVE: 'player:remove',
@@ -41,6 +56,7 @@ export const S2C = {
   ROOM_STATE: 'room:state',
   ROOM_CLOSED: 'room:closed',
   VOTE_STARTED: 'vote:started',
+  HAND_CHANGED: 'vote:handChanged',
   VOTE_LOCKED: 'vote:locked',
   VOTE_FINISHED: 'vote:finished',
   ERROR: 'app:error',
@@ -53,6 +69,8 @@ export const LIMITS = {
   NOTE_MAX: 2000,
   PUBLIC_NOTE_MAX: 500,
   MAX_PLAYERS: 20,
+  DAY_MIN: 1,
+  DAY_MAX: 99,
   MIN_PLAYERS_TO_START: 3,
   // Grace period for a hand toggle that was sent just before the clock hand
   // arrived but reached the server just after it.
